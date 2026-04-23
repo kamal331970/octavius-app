@@ -6,6 +6,7 @@ from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTyp
 from notion_client import Client
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+import base64
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY")
@@ -55,6 +56,19 @@ def make_event(title, date_str, time_str):
     svc.events().insert(calendarId="primary", body=ev).execute()
     return "RDV cree: " + title + " le " + d.strftime("%d/%m/%Y a %H:%M")
 
+def get_emails():
+    svc = build("gmail", "v1", credentials=get_creds())
+    results = svc.users().messages().list(userId="me", labelIds=["UNREAD"], maxResults=5).execute()
+    messages = results.get("messages", [])
+    if not messages:
+        return "Aucun email non lu."
+    out = []
+    for m in messages:
+        msg = svc.users().messages().get(userId="me", id=m["id"], format="metadata", metadataHeaders=["From", "Subject"]).execute()
+        headers = {h["name"]: h["value"] for h in msg["payload"]["headers"]}
+        out.append("- De: " + headers.get("From", "?") + " | Sujet: " + headers.get("Subject", "?"))
+    return "\n".join(out)
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message.text
     low = msg.lower()
@@ -98,6 +112,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(make_event(title, date_str, time_str))
         except Exception as e:
             await update.message.reply_text("Erreur RDV: " + str(e))
+        return
+
+    if any(w in low for w in ["emails", "email", "messages", "boite"]):
+        try:
+            await update.message.reply_text("Tes emails non lus:\n" + get_emails())
+        except Exception as e:
+            await update.message.reply_text("Erreur Gmail: " + str(e))
         return
 
     client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
