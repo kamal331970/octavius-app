@@ -24,8 +24,12 @@ def get_calendar_events():
     end = (datetime.utcnow() + timedelta(days=1)).isoformat() + "Z"
     events = service.events().list(calendarId="primary", timeMin=now, timeMax=end, maxResults=5, singleEvents=True, orderBy="startTime").execute().get("items", [])
     if not events: return "Aucun evenement aujourd hui."
-    return "".join([f"- {e['summary']} a {e['start'].get('dateTime', e['start'].get('date'))}
-" for e in events])
+    result = []
+    for e in events:
+        start = e['start'].get('dateTime', e['start'].get('date'))
+        result.append('- ' + e['summary'] + ' a ' + str(start))
+    return '
+'.join(result)
 
 def create_calendar_event(title, date_str, time_str="10:00"):
     service = build("calendar", "v3", credentials=get_google_creds())
