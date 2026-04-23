@@ -17,22 +17,13 @@ GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 GOOGLE_REFRESH_TOKEN = os.environ.get("GOOGLE_REFRESH_TOKEN")
 
 def get_creds():
-    return Credentials(
-        token=None,
-        refresh_token=GOOGLE_REFRESH_TOKEN,
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=GOOGLE_CLIENT_ID,
-        client_secret=GOOGLE_CLIENT_SECRET
-    )
+    return Credentials(token=None, refresh_token=GOOGLE_REFRESH_TOKEN, token_uri="https://oauth2.googleapis.com/token", client_id=GOOGLE_CLIENT_ID, client_secret=GOOGLE_CLIENT_SECRET)
 
 def get_events():
     svc = build("calendar", "v3", credentials=get_creds())
     now = datetime.utcnow().isoformat() + "Z"
     end = (datetime.utcnow() + timedelta(days=1)).isoformat() + "Z"
-    items = svc.events().list(
-        calendarId="primary", timeMin=now, timeMax=end,
-        maxResults=5, singleEvents=True, orderBy="startTime"
-    ).execute().get("items", [])
+    items = svc.events().list(calendarId="primary", timeMin=now, timeMax=end, maxResults=5, singleEvents=True, orderBy="startTime").execute().get("items", [])
     if not items:
         return "Aucun evenement aujourd hui."
     out = []
@@ -48,21 +39,5 @@ def make_event(title, date_str, time_str):
     except:
         d = datetime.utcnow() + timedelta(days=1)
         d = d.replace(hour=10, minute=0)
-    ev = {
-        "summary": title,
-        "start": {"dateTime": d.isoformat(), "timeZone": "Europe/Paris"},
-        "end": {"dateTime": (d + timedelta(hours=1)).isoformat(), "timeZone": "Europe/Paris"}
-    }
-    svc.events().insert(calendarId="primary", body=ev).execute()
-    return "RDV cree: " + title + " le " + d.strftime("%d/%m/%Y a %H:%M")
-
-def get_emails():
-    svc = build("gmail", "v1", credentials=get_creds())
-    results = svc.users().messages().list(userId="me", labelIds=["UNREAD"], maxResults=5).execute()
-    messages = results.get("messages", [])
-    if not messages:
-        return "Aucun email non lu."
-    out = []
-    for m in messages:
-        msg = svc.users().messages().get(userId="me", id=m["id"], format="metadata", metadataHeaders=["From", "Subject"]).execute()
-        headers = {h["name"]:
+    ev = {"summary": title, "start": {"dateTime": d.isoformat(), "timeZone": "Europe/Paris"}, "end": {"dateTime": (d + timedelta(hours=1)).isoformat(), "timeZone": "Europe/Paris"}}
+    svc.events()
