@@ -94,7 +94,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     date_str = p
                 if ":" in p and len(p) == 5:
                     time_str = p
-            await update.message.reply_text(make_event(msg, date_str, time_str))
+            title = msg.replace(date_str, "").replace(time_str, "").replace("cree un rdv", "").replace("creer rdv", "").replace("nouveau rdv", "").replace("planifie", "").replace("programme rdv", "").strip()
+            await update.message.reply_text(make_event(title, date_str, time_str))
         except Exception as e:
             await update.message.reply_text("Erreur RDV: " + str(e))
         return
