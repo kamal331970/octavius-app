@@ -1,12 +1,12 @@
 import anthropic
 import os
+import json
 from datetime import datetime, timedelta
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 from notion_client import Client
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-import base64
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY")
@@ -65,72 +65,4 @@ def get_emails():
     out = []
     for m in messages:
         msg = svc.users().messages().get(userId="me", id=m["id"], format="metadata", metadataHeaders=["From", "Subject"]).execute()
-        headers = {h["name"]: h["value"] for h in msg["payload"]["headers"]}
-        out.append("- De: " + headers.get("From", "?") + " | Sujet: " + headers.get("Subject", "?"))
-    return "\n".join(out)
-
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = update.message.text
-    low = msg.lower()
-
-    if any(w in low for w in ["ajoute", "note", "tache", "rappelle"]):
-        try:
-            Client(auth=NOTION_TOKEN).blocks.children.append(
-                block_id=NOTION_PAGE_ID,
-                children=[{
-                    "object": "block",
-                    "type": "to_do",
-                    "to_do": {
-                        "rich_text": [{"type": "text", "text": {"content": msg}}],
-                        "checked": False
-                    }
-                }]
-            )
-            await update.message.reply_text("Tache ajoutee dans Notion.")
-        except Exception as e:
-            await update.message.reply_text("Erreur Notion: " + str(e))
-        return
-
-    if any(w in low for w in ["agenda", "calendrier", "evenement"]):
-        try:
-            await update.message.reply_text("Ton agenda:\n" + get_events())
-        except Exception as e:
-            await update.message.reply_text("Erreur Calendar: " + str(e))
-        return
-
-    if any(w in low for w in ["cree un rdv", "creer rdv", "nouveau rdv", "planifie", "programme rdv"]):
-        try:
-            parts = msg.split()
-            date_str = datetime.utcnow().strftime("%Y-%m-%d")
-            time_str = "10:00"
-            for p in parts:
-                if "-" in p and len(p) == 10:
-                    date_str = p
-                if ":" in p and len(p) == 5:
-                    time_str = p
-            title = msg.replace(date_str, "").replace(time_str, "").replace("cree un rdv", "").replace("creer rdv", "").replace("nouveau rdv", "").replace("planifie", "").replace("programme rdv", "").strip()
-            await update.message.reply_text(make_event(title, date_str, time_str))
-        except Exception as e:
-            await update.message.reply_text("Erreur RDV: " + str(e))
-        return
-
-    if any(w in low for w in ["emails", "email", "messages", "boite"]):
-        try:
-            await update.message.reply_text("Tes emails non lus:\n" + get_emails())
-        except Exception as e:
-            await update.message.reply_text("Erreur Gmail: " + str(e))
-        return
-
-    client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
-    r = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=1024,
-        system="Tu es Octavius, assistant de Kamal. Direct, zero blabla. Reponds en francais.",
-        messages=[{"role": "user", "content": msg}]
-    )
-    await update.message.reply_text(r.content[0].text)
-
-app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-print("Octavius est en ligne...")
-app.run_polling()
+        headers = {h["name"]:
